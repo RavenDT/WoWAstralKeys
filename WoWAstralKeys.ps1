@@ -14,11 +14,11 @@
 .OUTPUTS
     None
 .NOTES
-    Version:            v1.0.0
+    Version:            v1.0.1
     Author(s):          RavenDT (https://github.com/RavenDT)
     Maintainer(s):      RavenDT (https://github.com/RavenDT)
     Website:            https://github.com/RavenDT/WoWAstralKeys
-    Modified Date:      2022-02-15
+    Modified Date:      2022-03-08
     Purpose/Change:     - Initial Release
     License:            MIT License
 .EXAMPLE
@@ -231,6 +231,8 @@ $DUNGEON = @{
     '380' = 'Sanguine Depths'
     '381' = 'Spires of Ascension'
     '382' = 'Theater of Pain'
+    '391' = 'Streets of Wonder'
+    '392' = "So'leah's Gambit"
 }
 
 #--------------------------------------------------[Functions]-----------------------------------------------------
@@ -243,7 +245,7 @@ function Invoke-WAKCharacterExtraction {
 
     Process {
         $Object = if ($InputObject.AstralCharacters) { $InputObject.AstralCharacters } else { $_ }
-        
+
         foreach ($Item in $Object) {
             if (!$MyKeyData[$Item.unit]) { $MyKeyData[$Item.unit] = @{} }
             $MyKeyData[$Item.unit].Name = $Item.unit
@@ -329,7 +331,7 @@ if ($Anonymous) {
 
 # Output data as a table
 $MyKeys |
-    Sort-Object -Property Faction,Dungeon,@{E='Level';D=$true},Name,Class | 
+    Sort-Object -Property Faction,Dungeon,@{E='Level';D=$true},Name,Class |
     Format-Table Name,Faction,Class,Dungeon,Level,WeeklyBest
 
 if ($OutputFormat) {
