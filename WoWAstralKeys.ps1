@@ -1,4 +1,4 @@
-#Requires -Version 3
+#Requires -Version 5
 
 <#
 .SYNOPSIS
@@ -6,7 +6,7 @@
 .DESCRIPTION
     The `WoWAstralKeys` script will check your World of Warcraft install folder and read the AstralKeys SavedVariables files for all accounts and then output them to the screen.
 
-    You can also use options to output the data to a CSV or a JSON file, or sanitize specific features such as removing server name, or hiding the names of the characters.
+    You can also use options to remove server names or hiding the names of the characters.
 
     Use this script to dump all your keys so you can easily share with your friends!
 .INPUTS
@@ -14,12 +14,12 @@
 .OUTPUTS
     None
 .NOTES
-    Version:            v1.0.1
+    Version:            v2.0.0
     Author(s):          RavenDT (https://github.com/RavenDT)
     Maintainer(s):      RavenDT (https://github.com/RavenDT)
     Website:            https://github.com/RavenDT/WoWAstralKeys
-    Modified Date:      2022-03-08
-    Purpose/Change:     - Initial Release
+    Modified Date:      2022-12-19
+    Purpose/Change:     - Updated for Dragonflight Season 1
     License:            MIT License
 .EXAMPLE
     PS> .\WoWAstralKeys.ps1
@@ -40,16 +40,6 @@
     ----                   -------  -----        -------            ----- ----------
     Character6-Server3     Horde    Mage         Theater of Pain       10          0
     Character7-Server3     Horde    Paladin      No key                 0          0
-.EXAMPLE
-    PS> .\WoWAstralKeys.ps1 -FilterNoKeys
-
-    Name                   Faction  Class        Dungeon            Level WeeklyBest
-    ----                   -------  -----        -------            ----- ----------
-    Character1-Server1     Alliance Demon Hunter De Other Side         17         15
-    Character2-Server1     Alliance Paladin      Halls of Atonement    16         15
-    Character4-Server2     Alliance Monk         Plaguefall            10          7
-    Character5-Server2     Alliance Hunter       Theater of Pain       15          0
-    Character6-Server3     Horde    Mage         Theater of Pain       10          0
 .EXAMPLE
     PS> .\WoWAstralKeys.ps1 -NoServer
 
@@ -74,86 +64,33 @@
          Alliance Hunter       Theater of Pain       15          0
          Horde    Mage         Theater of Pain       10          0
          Horde    Paladin      No key                 0          0
-.EXAMPLE
-    PS> .\WoWAstralKeys.ps1 -OutputFormat CSV -Path '.\WoWKeys.csv'
-
-    PS> Get-Content -Path '.\WoWKeys.csv'
-    "Name","Faction","Class","Dungeon","Level","WeeklyBest"
-    "Character1-Server1","Alliance","Demon Hunter","De Other Side","17","15"
-    "Character2-Server1","Alliance","Paladin","Halls of Atonement","16","15"
-    "Character3-Server1","Alliance","Warrior","No key","0","0"
-    "Character4-Server2","Alliance","Monk","Plaguefall","10","7"
-    "Character5-Server2","Alliance","Hunter","Theater of Pain","15","0"
-    "Character6-Server3","Horde","Mage","Theater of Pain","10","0"
-    "Character7-Server3","Horde","Paladin","No key","0","0"
 #>
 
 #----------------------------------------------[Script Parameters]-------------------------------------------------
 
 [CmdletBinding(DefaultParameterSetName = 'Default', SupportsShouldProcess = $true)]
 Param (
-    # Choose a specific faction to output. (Default: Both factions)
-    [Parameter()]
-    [ValidateSet('Alliance','Horde')]
-    [String]$Faction,
-
-    # Do not return characters that do not have keys.
-    [Parameter()]
-    [Switch]$FilterNoKeys,
-
     # Remove server names from character names.
+    [Parameter()]
     [Parameter(ParameterSetName = 'NoServer', Mandatory = $true)]
-    [Parameter(ParameterSetName = 'NoServerOutFile', Mandatory = $true)]
     [Switch]$NoServer,
 
     # Remove character names from output.
+    [Parameter()]
     [Parameter(ParameterSetName = 'Anonymous', Mandatory = $true)]
-    [Parameter(ParameterSetName = 'AnonymousOutFile', Mandatory = $true)]
-    [Switch]$Anonymous,
-
-    # Specify the format for file write.
-    [Parameter(ParameterSetName = 'OutFile', Mandatory = $true)]
-    [Parameter(ParameterSetName = 'NoServerOutFile', Mandatory = $true)]
-    [Parameter(ParameterSetName = 'AnonymousOutFile', Mandatory = $true)]
-    [ValidateSet('CSV','JSON')]
-    [String]$OutputFormat,
-
-    # Specify the file name of the file to write.
-    [Parameter(ParameterSetName = 'OutFile', Mandatory = $true)]
-    [Parameter(ParameterSetName = 'NoServerOutFile', Mandatory = $true)]
-    [Parameter(ParameterSetName = 'AnonymousOutFile', Mandatory = $true)]
-    [Alias('File','FilePath')]
-    [String]$Path
+    [Switch]$Anonymous
 )
 
 #-----------------------------------------------[Initializations]--------------------------------------------------
 
 $EASC = @{ ErrorAction = 'SilentlyContinue' }
 
-# Find the 'lua' command on the system
-$Lua = Get-Command 'lua' @EASC
-$Lua = if ($Lua) { $Lua.Path } else {
-    (
-        Resolve-Path -Path (
-            Read-Host @EASC -Prompt (
-                @(
-                    "Unable to locate 'lua' command in path.",
-                    "Please enter the location of the 'lua' executable"
-                ) -join "`n"
-            )
-        )
-    ).Path
-}
-if (!$Lua) {
-    throw "'Lua' command was not found; exiting."
-    exit
-}
-
 # Load stored configuration file
 $ConfigFilePath = Join-Path -Path '~' -ChildPath '.wakconfig'
 if ( -not (Resolve-Path @EASC -Path $ConfigFilePath) ) {
     Write-Verbose 'Configuration file was not found.'
     $Config = [PSCustomObject]@{
+        LuaPath = ''
         WoWPath = ''
     }
     $ConfigHash = $null
@@ -163,13 +100,49 @@ if ( -not (Resolve-Path @EASC -Path $ConfigFilePath) ) {
 }
 <#
     Stored config should have:
+    - LuaPath - The location of the Lua command
     - WoWPath - The location of the WoW install (default: 'C:\World of Warcraft')
 #>
 $ConfigChanged = $false
 
+# Make sure we know where the 'lua' command is
+if ( -not $Config.LuaPath -or -not (Test-Path $Config.LuaPath) ) {
+    # Check path before asking the user
+    $Lua = Get-Command 'lua' @EASC
+    "`$Lua is $Lua" | Out-Host
+    if ($Config.PSObject.Properties.Name -notcontains 'LuaPath') {
+        $Config | Add-Member -NotePropertyName 'LuaPath' -NotePropertyValue ''
+        $ConfigChanged = $true
+    }
+    $Config.LuaPath = if ($Lua) { $Lua.Path } else {
+        (
+            Resolve-Path -Path (
+                Read-Host @EASC -Prompt (
+                    @(
+                        "Unable to locate 'lua' command in path.",
+                        "Please enter the location of the 'lua' executable"
+                    ) -join "`n"
+                )
+            )
+        ).Path
+    }
+    $ConfigChanged = $true
+} else {
+    $Lua = $Config.LuaPath
+}
+
+if (!$Lua) {
+    throw "'Lua' command was not found; exiting."
+    exit
+}
+
 # Make sure we know where WoW is installed
 if ( -not $Config.WoWPath -or -not (Test-Path $Config.WoWPath) ) {
     # Check default install location(s) before asking the user
+    if ($Config.PSObject.Properties.Name -notcontains 'WoWPath') {
+        $Config | Add-Member -NotePropertyName 'WoWPath' -NotePropertyValue ''
+        $ConfigChanged = $true
+    }
     if (
         (
             $PSVersionTable.PSEdition -eq 'Desktop' -or
@@ -180,8 +153,8 @@ if ( -not $Config.WoWPath -or -not (Test-Path $Config.WoWPath) ) {
         ) -and
         (Resolve-Path @EASC -Path 'C:\World of Warcraft')
     ) {
-            $Config.WoWPath = 'C:\World of Warcraft'
-            $ConfigChanged = $true
+        $Config.WoWPath = 'C:\World of Warcraft'
+        $ConfigChanged = $true
     } else {
         # Ask the user where WoW is installed
         $Config.WoWPath = (
@@ -202,87 +175,191 @@ $MyKeyData = @{}
 
 #------------------------------------------------[Declarations]----------------------------------------------------
 
-$FACTION_ = @{
-    '0' = 'Alliance'
-    '1' = 'Horde'
-}
+Class WoWAstralKeys {
+    [String] $Name
+    hidden [Bool] $Faction_
+    hidden [String] $Class_
+    hidden [UInt16] $Dungeon_
+    [UInt16] $Level
+    [UInt16] $WeeklyBest
+    hidden [UInt32] $Timestamp
 
-$CLASS = @{
-    DEATHKNIGHT = 'Death Knight'
-    DEMONHUNTER = 'Demon Hunter'
-    DRUID       = 'Druid'
-    HUNTER      = 'Hunter'
-    MAGE        = 'Mage'
-    MONK        = 'Monk'
-    PALADIN     = 'Paladin'
-    PRIEST      = 'Priest'
-    ROGUE       = 'Rogue'
-    SHAMAN      = 'Shaman'
-    WARLOCK     = 'Warlock'
-    WARRIOR     = 'Warrior'
-}
+    static hidden $_FACTION_LOOKUP = @{
+        '0' = 'Alliance'
+        '1' = 'Horde'
+    }
 
-$DUNGEON = @{
-    '375' = 'Mists of Tirna Scithe'
-    '376' = 'The Necrotic Wake'
-    '377' = 'De Other Side'
-    '378' = 'Halls of Atonement'
-    '379' = 'Plaguefall'
-    '380' = 'Sanguine Depths'
-    '381' = 'Spires of Ascension'
-    '382' = 'Theater of Pain'
-    '391' = 'Streets of Wonder'
-    '392' = "So'leah's Gambit"
+    static hidden $_CLASS_LOOKUP = @{
+        UNKNOWN     = "Unknown"
+        DEATHKNIGHT = "Death Knight"
+        DEMONHUNTER = "Demon Hunter"
+        DRUID       = "Druid"
+        EVOKER      = "Evoker"
+        HUNTER      = "Hunter"
+        MAGE        = "Mage"
+        MONK        = "Monk"
+        PALADIN     = "Paladin"
+        PRIEST      = "Priest"
+        ROGUE       = "Rogue"
+        SHAMAN      = "Shaman"
+        WARLOCK     = "Warlock"
+        WARRIOR     = "Warrior"
+    }
+
+    static hidden $_DUNGEON_LOOKUP = @{
+        '65535' = "No key"
+        '2'     = "Temple of the Jade Serpent"
+        '165'   = "Shadowmoon Burial Grounds"
+        '200'   = "Halls of Valor"
+        '210'   = "Court of Stars"
+        '375'   = "Mists of Tirna Scithe"
+        '376'   = "The Necrotic Wake"
+        '377'   = "De Other Side"
+        '378'   = "Halls of Atonement"
+        '379'   = "Plaguefall"
+        '380'   = "Sanguine Depths"
+        '381'   = "Spires of Ascension"
+        '382'   = "Theater of Pain"
+        '391'   = "Streets of Wonder"
+        '392'   = "So'leah's Gambit"
+        '399'   = "Ruby Life Pools"
+        '400'   = "Nokhud Offensive"
+        '401'   = "The Azure Vault"
+        '402'   = "Algeth'ar Academy"
+    }
+
+    hidden _Add_ScriptProperties() {
+        [OutputType([Void])]
+
+        $this |
+            Add-Member -MemberType 'ScriptProperty' -Name 'Faction' -Value {
+                if ($this.Faction_) { "Horde" } else { "Alliance" }
+            } -SecondValue {
+                Param ($Arg)
+                if ($Arg -as [Bool]) {
+                    $this.Faction_ = $Arg
+                } elseif ($Arg -like 'Alliance') {
+                    $this.Faction_ = $False
+                } elseif ($Arg -like 'Horde') {
+                    $this.Faction_ = $True
+                } else {
+                    throw "$Arg is not a valid faction."
+                }
+            }
+        $this |
+            Add-Member -MemberType 'ScriptProperty' -Name 'Class' -Value {
+                [WoWAstralKeys]::_CLASS_LOOKUP[$this.Class_]
+            } -SecondValue {
+                Param ([String]$Class)
+                if ($Class -in [WoWAstralKeys]::_CLASS_LOOKUP.Keys) {
+                    $this.Class_ = $Class
+                } elseif ($Class -in [WoWAstralKeys]::_CLASS_LOOKUP.Values) {
+                    $this.Class_ = [WoWAstralKeys]::_CLASS_LOOKUP.GetEnumerator().
+                    Where({ $_.Value -like $Class }).Name
+                } else {
+                    throw "$Class is not a valid class."
+                }
+            }
+
+        $this |
+            Add-Member -MemberType 'ScriptProperty' -Name 'Dungeon' -Value {
+                [WoWAstralKeys]::_DUNGEON_LOOKUP[([String]$this.Dungeon_)]
+            } -SecondValue {
+                Param ($Dungeon)
+                if ($Dungeon -as [UInt16] -and $Dungeon -in [WoWAstralKeys]::_DUNGEON_LOOKUP.Keys) {
+                    $this.Dungeon_ = $Dungeon
+                } elseif ($Dungeon -in [WoWAstralKeys]::_DUNGEON_LOOKUP.Values) {
+                    $this.Dungeon_ = [WoWAstralKeys]::_DUNGEON_LOOKUP.GetEnumerator().
+                    Where({ $_.Value -like $Dungeon }).Name
+                } else {
+                    throw "$Dungeon is an unknown Dungeon."
+                }
+            }
+    }
+
+    WoWAstralKeys() {
+        $this._Add_ScriptProperties()
+    }
+
+    WoWAstralKeys(
+        [String]$Name,
+        [Bool]$Faction,
+        [String]$Class,
+        [UInt16]$Dungeon,
+        [UInt16]$Level,
+        [UInt16]$WeeklyBest
+    ) {
+        $this._Add_ScriptProperties()
+
+        $this.Name = $Name
+        $this.Faction_ = $Faction
+        $this.Class_ = $Class
+        $this.Dungeon_ = $Dungeon
+        $this.Level = $Level
+        $this.WeeklyBest = $WeeklyBest
+    }
 }
 
 #--------------------------------------------------[Functions]-----------------------------------------------------
 
 function Invoke-WAKCharacterExtraction {
     Param(
-        [Parameter(ValueFromPipeline = $true)]
-        [Object]$InputObject
+        [Parameter(Mandatory, ValueFromPipeline)]
+        [Object]$InputObject,
+
+        [Parameter(Mandatory)]
+        [Hashtable]$Hashtable
     )
 
     Process {
-        $Object = if ($InputObject.AstralCharacters) { $InputObject.AstralCharacters } else { $_ }
-
-        foreach ($Item in $Object) {
-            if (!$MyKeyData[$Item.unit]) { $MyKeyData[$Item.unit] = @{} }
-            $MyKeyData[$Item.unit].Name = $Item.unit
-            $MyKeyData[$Item.unit].Class = $CLASS[$Item.class]
-            $MyKeyData[$Item.unit].Faction = $FACTION_."$($Item.faction)"
-            $MyKeyData[$Item.unit].Dungeon = 'No key'
-            $MyKeyData[$Item.unit].Level = 0
-            $MyKeyData[$Item.unit].WeeklyBest = $Item.weekly_best
+        foreach ($Item in $InputObject.AstralCharacters) {
+            if ($Item.unit -notin $Hashtable.Keys) { $Hashtable[$Item.unit] = @{} }
+            $Hashtable[$Item.unit] = [WoWAstralKeys]::new(
+                $Item.unit,         # Name
+                $Item.faction,      # Faction
+                $Item.class,        # Class
+                65535,              # Dungeon
+                0,                  # Level of Key
+                $Item.weekly_best   # Weekly Best
+            )
         }
     }
 }
 
 function Invoke-WAKKeystoneExtraction {
     Param(
-        [Parameter(ValueFromPipeline = $true)]
-        [Object]$InputObject
+        [Parameter(Mandatory, ValueFromPipeline)]
+        [Object]$InputObject,
+
+        [Parameter(Mandatory)]
+        [Hashtable]$Hashtable
     )
 
     Process {
-        $Object = if ($_.AstralKeys) { $_.AstralKeys } else { $_ }
-        $ObjectFiltered = $Object | Where-Object -Property 'unit' -In $MyKeyData.Keys
+        $InputObject | Write-Verbose
+        $ObjectFiltered = $InputObject.AstralKeys | Where-Object -Property 'unit' -In $Hashtable.Keys
         foreach ($Item in $ObjectFiltered) {
-            if (!$MyKeyData[$Item.unit]) {
-                $MyKeyData[$Item.unit] = @{
+            if (!$Hashtable[$Item.unit]) {
+                $PropertiesToSet = @{
                     Name = $Item.unit
                     Class = 'Unknown'
-                    Faction = 'Unknown'
-                    Dungeon = $DUNGEON."$($Item.dungeon_id)"
+                    Faction = 0
+                    Dungeon = $Item.dungeon_id
                     Level = $Item.key_level
                     WeeklyBest = $Item.weekly_best
                     TimeStamp = $Item.time_stamp
                 }
-            } elseif ($MyKeyData[$Item.unit].TimeStamp -lt $Item.time_stamp) {
-                $MyKeyData[$Item.unit].Dungeon = $DUNGEON."$($Item.dungeon_id)"
-                $MyKeyData[$Item.unit].Level = $Item.key_level
-                $MyKeyData[$Item.unit].TimeStamp = $Item.time_stamp
+            } elseif ($Hashtable[$Item.unit].Timestamp -lt $Item.time_stamp) {
+                $PropertiesToSet = @{
+                    Dungeon = $Item.dungeon_id
+                    Level = $Item.key_level
+                    TimeStamp = $Item.time_stamp
+                }
             }
+            $PropertiesToSet.GetEnumerator().ForEach({
+                "Setting '{0}'.'{1}' to '{2}'" -f $Item.unit,$_.Key,$_.Value | Write-Verbose
+                $Hashtable[$Item.unit].$($_.Key) = $_.Value
+            })
         }
     }
 }
@@ -300,25 +377,18 @@ $AKTargetPath = @(
 ) -join [IO.Path]::DirectorySeparatorChar
 $AKTargetFiles = Get-ChildItem -Path $AKTargetPath -Recurse
 
+# Do the work
 foreach ($File in $AKTargetFiles) {
     $ImportJson = ( & $Lua ".\AK_Lua_to_Json.lua" "$File" )
     $ImportObject = $ImportJson | ConvertFrom-Json
-    $ImportObject | Invoke-WAKCharacterExtraction
-    $ImportObject | Invoke-WAKKeystoneExtraction
+    $ImportObject | Invoke-WAKCharacterExtraction -Hashtable $MyKeyData
+    $ImportObject | Invoke-WAKKeystoneExtraction -Hashtable $MyKeyData
 }
 
-# Convert Hashtable to PSCustomObject
-$MyKeys = $MyKeyData.Values |
-    ConvertTo-Json |
-    ConvertFrom-Json
+# Once we ensure uniqueness, let's strip off the keys and only keep the values
+$MyKeys = $MyKeyData.Values
 
 # Apply specified filters
-if ($Faction) {
-    $MyKeys = $MyKeys | Where-Object -Property Faction -Eq $Faction
-}
-if ($FilterNoKeys) {
-    $MyKeys = $MyKeys | Where-Object -Property Dungeon -Ne 'No key'
-}
 if ($NoServer) {
     for($i = 0; $i -lt $MyKeys.Count; $i++) {
         $MyKeys[$i].Name = $MyKeys[$i].Name -replace "-[0-9A-Z' ]+$",''
@@ -329,23 +399,11 @@ if ($Anonymous) {
 }
 
 
-# Output data as a table
+# Output data
 $MyKeys |
-    Sort-Object -Property Faction,Dungeon,@{E='Level';D=$true},Name,Class |
-    Format-Table Name,Faction,Class,Dungeon,Level,WeeklyBest
-
-if ($OutputFormat) {
-    switch ($OutputFormat) {
-        CSV  {
-            $OutputString = $MyKeys |
-                Select-Object -Property Name,Faction,Class,Dungeon,Level,WeeklyBest |
-                ConvertTo-Csv -NoTypeInformation
-        }
-        JSON { $OutputString = $MyKeys | ConvertTo-Json }
-    }
-
-    $OutputString | Set-Content -Encoding utf8 $Path
-}
+    Select-Object -ExcludeProperty TimeStamp |
+    Select-Object -Property Name,Faction,Class,Dungeon,Level,WeeklyBest |
+    Sort-Object -Property Faction,@{E='Dungeon';D=$false},@{E='Level';D=$true},Name,Class
 
 
 # Write changes to configuration file
