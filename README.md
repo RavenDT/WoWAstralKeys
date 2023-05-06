@@ -29,7 +29,7 @@ Get the Astral Keys addon! ([CurseForge](https://www.curseforge.com/wow/addons/a
 ## Usage
 
 ```powershell
-PS> .\WoWAstralKeys.ps1
+PS> .\WoWAstralKeys.ps1 | Format-Table
 
 Name                   Faction  Class        Dungeon            Level WeeklyBest
 ----                   -------  -----        -------            ----- ----------
@@ -43,7 +43,7 @@ Character7-Server3     Horde    Paladin      No key                 0          0
 ```
 
 ```powershell
-PS> .\WoWAstralKeys.ps1 -Faction Horde
+PS> .\WoWAstralKeys.ps1 -Faction Horde | Format-Table
 
 Name                   Faction  Class        Dungeon            Level WeeklyBest
 ----                   -------  -----        -------            ----- ----------
@@ -52,7 +52,7 @@ Character7-Server3     Horde    Paladin      No key                 0          0
 ```
 
 ```powershell
-PS> .\WoWAstralKeys.ps1 -FilterNoKeys
+PS> .\WoWAstralKeys.ps1 -FilterNoKeys | Format-Table
 
 Name                   Faction  Class        Dungeon            Level WeeklyBest
 ----                   -------  -----        -------            ----- ----------
@@ -64,7 +64,7 @@ Character6-Server3     Horde    Mage         Theater of Pain       10          0
 ```
 
 ```powershell
-PS> .\WoWAstralKeys.ps1 -NoServer
+PS> .\WoWAstralKeys.ps1 -NoServer | Format-Table
 
 Name           Faction  Class        Dungeon            Level WeeklyBest
 ----           -------  -----        -------            ----- ----------
@@ -78,17 +78,17 @@ Character7     Horde    Paladin      No key                 0          0
 ```
 
 ```powershell
-PS> .\WoWAstralKeys.ps1 -Anonymous
+PS> .\WoWAstralKeys.ps1 -Anonymous | Format-Table
 
-Name Faction  Class        Dungeon            Level WeeklyBest
----- -------  -----        -------            ----- ----------
-     Alliance Demon Hunter De Other Side         17         15
-     Alliance Paladin      Halls of Atonement    16         15
-     Alliance Warrior      No key                 0          0
-     Alliance Monk         Plaguefall            10          7
-     Alliance Hunter       Theater of Pain       15          0
-     Horde    Mage         Theater of Pain       10          0
-     Horde    Paladin      No key                 0          0
+Faction  Class        Dungeon            Level WeeklyBest
+-------  -----        -------            ----- ----------
+Alliance Demon Hunter De Other Side         17         15
+Alliance Paladin      Halls of Atonement    16         15
+Alliance Warrior      No key                 0          0
+Alliance Monk         Plaguefall            10          7
+Alliance Hunter       Theater of Pain       15          0
+Horde    Mage         Theater of Pain       10          0
+Horde    Paladin      No key                 0          0
 ```
 
 ```powershell
@@ -107,7 +107,6 @@ PS> Get-Content -Path '.\WoWKeys.csv'
 
 ## Roadmap Items
 
-* An option to generate an extended ASCII table
 * An option to filter on specific WoW accounts (currently reports all accounts)
 
 ## Author
