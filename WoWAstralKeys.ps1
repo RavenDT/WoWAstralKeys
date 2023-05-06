@@ -14,15 +14,15 @@
 .OUTPUTS
     None
 .NOTES
-    Version:            v2.0.0
+    Version:            v2.0.0-rc1
     Author(s):          RavenDT (https://github.com/RavenDT)
     Maintainer(s):      RavenDT (https://github.com/RavenDT)
     Website:            https://github.com/RavenDT/WoWAstralKeys
-    Modified Date:      2022-12-19
-    Purpose/Change:     - Updated for Dragonflight Season 1
+    Modified Date:      2023-05-06
+    Purpose/Change:     - Multiple bugfixes and general improvements
     License:            MIT License
 .EXAMPLE
-    PS> .\WoWAstralKeys.ps1
+    PS> .\WoWAstralKeys.ps1 | Format-Table
 
     Name                   Faction  Class        Dungeon            Level WeeklyBest
     ----                   -------  -----        -------            ----- ----------
@@ -34,14 +34,14 @@
     Character6-Server3     Horde    Mage         Theater of Pain       10          0
     Character7-Server3     Horde    Paladin      No key                 0          0
 .EXAMPLE
-    PS> .\WoWAstralKeys.ps1 -Faction Horde
+    PS> .\WoWAstralKeys.ps1 -Faction Horde | Format-Table
 
     Name                   Faction  Class        Dungeon            Level WeeklyBest
     ----                   -------  -----        -------            ----- ----------
     Character6-Server3     Horde    Mage         Theater of Pain       10          0
     Character7-Server3     Horde    Paladin      No key                 0          0
 .EXAMPLE
-    PS> .\WoWAstralKeys.ps1 -NoServer
+    PS> .\WoWAstralKeys.ps1 -NoServer | Format-Table
 
     Name           Faction  Class        Dungeon            Level WeeklyBest
     ----           -------  -----        -------            ----- ----------
@@ -53,17 +53,17 @@
     Character6     Horde    Mage         Theater of Pain       10          0
     Character7     Horde    Paladin      No key                 0          0
 .EXAMPLE
-    PS> .\WoWAstralKeys.ps1 -Anonymous
+    PS> .\WoWAstralKeys.ps1 -Anonymous | Format-Table
 
-    Name Faction  Class        Dungeon            Level WeeklyBest
-    ---- -------  -----        -------            ----- ----------
-         Alliance Demon Hunter De Other Side         17         15
-         Alliance Paladin      Halls of Atonement    16         15
-         Alliance Warrior      No key                 0          0
-         Alliance Monk         Plaguefall            10          7
-         Alliance Hunter       Theater of Pain       15          0
-         Horde    Mage         Theater of Pain       10          0
-         Horde    Paladin      No key                 0          0
+    Faction  Class        Dungeon            Level WeeklyBest
+    -------  -----        -------            ----- ----------
+    Alliance Demon Hunter De Other Side         17         15
+    Alliance Paladin      Halls of Atonement    16         15
+    Alliance Warrior      No key                 0          0
+    Alliance Monk         Plaguefall            10          7
+    Alliance Hunter       Theater of Pain       15          0
+    Horde    Mage         Theater of Pain       10          0
+    Horde    Paladin      No key                 0          0
 #>
 
 #----------------------------------------------[Script Parameters]-------------------------------------------------
@@ -172,6 +172,9 @@ if ( -not $Config.WoWPath -or -not (Test-Path $Config.WoWPath) ) {
 }
 
 $MyKeyData = @{}
+$OutputProperties = @{
+    Property = [System.Collections.ArrayList]@("Name","Faction","Class","Dungeon","Level","WeeklyBest")
+}
 
 #------------------------------------------------[Declarations]----------------------------------------------------
 
@@ -298,6 +301,19 @@ Class WoWAstralKeys {
         $this.Level = $Level
         $this.WeeklyBest = $WeeklyBest
     }
+
+    [String] ToString() {
+        return (
+            (
+                "@{Name=`"$($this.Name)`"",
+                "Faction=`"$($this.Faction)`"",
+                "Class=`"$($this.Class)`"",
+                "Dungeon=`"$($this.Dungeon)`"",
+                "Level=`"$($this.Level)`"",
+                "WeeklyBest=`"$($this.WeeklyBest)`""
+            ) -join "; "
+        ) + "}"
+    }
 }
 
 #--------------------------------------------------[Functions]-----------------------------------------------------
@@ -336,10 +352,9 @@ function Invoke-WAKKeystoneExtraction {
     )
 
     Process {
-        $InputObject | Write-Verbose
-        $ObjectFiltered = $InputObject.AstralKeys | Where-Object -Property 'unit' -In $Hashtable.Keys
+        $ObjectFiltered = ($InputObject.AstralKeys).Where({ $_.unit -in $Hashtable.Keys })
         foreach ($Item in $ObjectFiltered) {
-            if (!$Hashtable[$Item.unit]) {
+            if ($Hashtable[$Item.unit].Count -eq 0) {
                 $PropertiesToSet = @{
                     Name = $Item.unit
                     Class = 'Unknown'
@@ -353,9 +368,13 @@ function Invoke-WAKKeystoneExtraction {
                 $PropertiesToSet = @{
                     Dungeon = $Item.dungeon_id
                     Level = $Item.key_level
+                    WeeklyBest = $Item.weekly_best
                     TimeStamp = $Item.time_stamp
                 }
+            } else {
+                continue
             }
+
             $PropertiesToSet.GetEnumerator().ForEach({
                 "Setting '{0}'.'{1}' to '{2}'" -f $Item.unit,$_.Key,$_.Value | Write-Verbose
                 $Hashtable[$Item.unit].$($_.Key) = $_.Value
@@ -390,19 +409,20 @@ $MyKeys = $MyKeyData.Values
 
 # Apply specified filters
 if ($NoServer) {
-    for($i = 0; $i -lt $MyKeys.Count; $i++) {
-        $MyKeys[$i].Name = $MyKeys[$i].Name -replace "-[0-9A-Z' ]+$",''
+    foreach ($Item in $MyKeys) {
+        $Item.Name = $Item.Name -replace "-[0-9A-Z' ]+$",''
     }
 }
 if ($Anonymous) {
     $MyKeys = $MyKeys | Select-Object -Property * -ExcludeProperty Name
+    $OutputProperties.Property.Remove("Name")
 }
 
 
 # Output data
 $MyKeys |
     Select-Object -ExcludeProperty TimeStamp |
-    Select-Object -Property Name,Faction,Class,Dungeon,Level,WeeklyBest |
+    Select-Object @OutputProperties |
     Sort-Object -Property Faction,@{E='Dungeon';D=$false},@{E='Level';D=$true},Name,Class
 
 
