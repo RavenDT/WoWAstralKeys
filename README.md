@@ -91,20 +91,6 @@ Horde    Mage         Theater of Pain       10          0
 Horde    Paladin      No key                 0          0
 ```
 
-```powershell
-PS> .\WoWAstralKeys.ps1 -OutputFormat CSV -Path '.\WoWKeys.csv'
-
-PS> Get-Content -Path '.\WoWKeys.csv'
-"Name","Faction","Class","Dungeon","Level","WeeklyBest"
-"Character1-Server1","Alliance","Demon Hunter","De Other Side","17","15"
-"Character2-Server1","Alliance","Paladin","Halls of Atonement","16","15"
-"Character3-Server1","Alliance","Warrior","No key","0","0"
-"Character4-Server2","Alliance","Monk","Plaguefall","10","7"
-"Character5-Server2","Alliance","Hunter","Theater of Pain","15","0"
-"Character6-Server3","Horde","Mage","Theater of Pain","10","0"
-"Character7-Server3","Horde","Paladin","No key","0","0"
-```
-
 ## Roadmap Items
 
 * An option to filter on specific WoW accounts (currently reports all accounts)
