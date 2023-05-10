@@ -14,12 +14,13 @@
 .OUTPUTS
     None
 .NOTES
-    Version:            v2.0.0-rc1
+    Version:            v2.0.0
     Author(s):          RavenDT (https://github.com/RavenDT)
     Maintainer(s):      RavenDT (https://github.com/RavenDT)
     Website:            https://github.com/RavenDT/WoWAstralKeys
-    Modified Date:      2023-05-06
-    Purpose/Change:     - Multiple bugfixes and general improvements
+    Modified Date:      2023-05-10
+    Purpose/Change:     - Updated dungeons for Dragonflight: Season 2
+                        - Multiple bugfixes and general improvements
     License:            MIT License
 .EXAMPLE
     PS> .\WoWAstralKeys.ps1 | Format-Table
@@ -229,6 +230,13 @@ Class WoWAstralKeys {
         '400'   = "Nokhud Offensive"
         '401'   = "The Azure Vault"
         '402'   = "Algeth'ar Academy"
+        '206'   = "Neltharion's Lair"
+        '245'   = "Freehold"
+        '403'   = "Uldaman: Legacy of Tyr"
+        '404'   = "Neltharus"
+        '405'   = "Brackenhide Hollow"
+        '406'   = "Halls of Infusion"
+        '438'   = "Vortex Pinnacle"
     }
 
     hidden _Add_ScriptProperties() {
