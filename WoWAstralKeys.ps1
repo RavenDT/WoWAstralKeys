@@ -14,13 +14,12 @@
 .OUTPUTS
     None
 .NOTES
-    Version:            v2.0.0
+    Version:            v2.0.1
     Author(s):          RavenDT (https://github.com/RavenDT)
     Maintainer(s):      RavenDT (https://github.com/RavenDT)
     Website:            https://github.com/RavenDT/WoWAstralKeys
-    Modified Date:      2023-05-10
-    Purpose/Change:     - Updated dungeons for Dragonflight: Season 2
-                        - Multiple bugfixes and general improvements
+    Modified Date:      2023-05-12
+    Purpose/Change:     - Forgot to add The Underrot
     License:            MIT License
 .EXAMPLE
     PS> .\WoWAstralKeys.ps1 | Format-Table
@@ -215,7 +214,10 @@ Class WoWAstralKeys {
         '2'     = "Temple of the Jade Serpent"
         '165'   = "Shadowmoon Burial Grounds"
         '200'   = "Halls of Valor"
+        '206'   = "Neltharion's Lair"
         '210'   = "Court of Stars"
+        '245'   = "Freehold"
+        '251'   = "The Underrot"
         '375'   = "Mists of Tirna Scithe"
         '376'   = "The Necrotic Wake"
         '377'   = "De Other Side"
@@ -230,8 +232,6 @@ Class WoWAstralKeys {
         '400'   = "Nokhud Offensive"
         '401'   = "The Azure Vault"
         '402'   = "Algeth'ar Academy"
-        '206'   = "Neltharion's Lair"
-        '245'   = "Freehold"
         '403'   = "Uldaman: Legacy of Tyr"
         '404'   = "Neltharus"
         '405'   = "Brackenhide Hollow"
