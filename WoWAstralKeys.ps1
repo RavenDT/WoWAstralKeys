@@ -14,12 +14,12 @@
 .OUTPUTS
     None
 .NOTES
-    Version:            v2.1.0
+    Version:            v2.2.1
     Author(s):          RavenDT (https://github.com/RavenDT)
     Maintainer(s):      RavenDT (https://github.com/RavenDT)
     Website:            https://github.com/RavenDT/WoWAstralKeys
-    Modified Date:      2023-12-07
-    Purpose/Change:     - Update for Dragonflight Season 3 Dungeons
+    Modified Date:      2025-02-15
+    Purpose/Change:     - Update for TWW Season 1 dungeons
     License:            MIT License
 .EXAMPLE
     PS> .\WoWAstralKeys.ps1 | Format-Table
@@ -128,6 +128,7 @@ Class WoWAstralKeys {
         '245'   = "Freehold"
         '248'   = "Waycrest Manor"
         '251'   = "The Underrot"
+        '353'   = "Siege of Boralus"
         '375'   = "Mists of Tirna Scithe"
         '376'   = "The Necrotic Wake"
         '377'   = "De Other Side"
@@ -150,6 +151,11 @@ Class WoWAstralKeys {
         '456'   = "Throne of the Tides"
         '463'   = "DOTI: Galakrond's Fall"
         '464'   = "DOTI: Murozond's Rise"
+        '501'   = "The Stonevault"
+        '502'   = "City of Threads"
+        '503'   = "Ara-Kara, City of Echoes"
+        '505'   = "The Dawnbreaker"
+        '507'   = "Grim Batol"
     }
 
     hidden _Add_ScriptProperties() {
