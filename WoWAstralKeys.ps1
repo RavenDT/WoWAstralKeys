@@ -14,12 +14,12 @@
 .OUTPUTS
     None
 .NOTES
-    Version:            v2.0.1
+    Version:            v2.1.0
     Author(s):          RavenDT (https://github.com/RavenDT)
     Maintainer(s):      RavenDT (https://github.com/RavenDT)
     Website:            https://github.com/RavenDT/WoWAstralKeys
-    Modified Date:      2023-05-12
-    Purpose/Change:     - Forgot to add The Underrot
+    Modified Date:      2023-12-07
+    Purpose/Change:     - Update for Dragonflight Season 3 Dungeons
     License:            MIT License
 .EXAMPLE
     PS> .\WoWAstralKeys.ps1 | Format-Table
@@ -68,115 +68,20 @@
 
 #----------------------------------------------[Script Parameters]-------------------------------------------------
 
-[CmdletBinding(DefaultParameterSetName = 'Default', SupportsShouldProcess = $true)]
+[CmdletBinding()]
 Param (
     # Remove server names from character names.
     [Parameter()]
-    [Parameter(ParameterSetName = 'NoServer', Mandatory = $true)]
     [Switch]$NoServer,
 
     # Remove character names from output.
     [Parameter()]
-    [Parameter(ParameterSetName = 'Anonymous', Mandatory = $true)]
     [Switch]$Anonymous
 )
 
-#-----------------------------------------------[Initializations]--------------------------------------------------
-
-$EASC = @{ ErrorAction = 'SilentlyContinue' }
-
-# Load stored configuration file
-$ConfigFilePath = Join-Path -Path '~' -ChildPath '.wakconfig'
-if ( -not (Resolve-Path @EASC -Path $ConfigFilePath) ) {
-    Write-Verbose 'Configuration file was not found.'
-    $Config = [PSCustomObject]@{
-        LuaPath = ''
-        WoWPath = ''
-    }
-    $ConfigHash = $null
-} else {
-    $Config = Get-Content -Path $ConfigFilePath | ConvertFrom-Json
-    $ConfigHash = (Get-FileHash -Algorithm SHA256 -Path $ConfigFilePath).Hash
-}
-<#
-    Stored config should have:
-    - LuaPath - The location of the Lua command
-    - WoWPath - The location of the WoW install (default: 'C:\World of Warcraft')
-#>
-$ConfigChanged = $false
-
-# Make sure we know where the 'lua' command is
-if ( -not $Config.LuaPath -or -not (Test-Path $Config.LuaPath) ) {
-    # Check path before asking the user
-    $Lua = Get-Command 'lua' @EASC
-    "`$Lua is $Lua" | Out-Host
-    if ($Config.PSObject.Properties.Name -notcontains 'LuaPath') {
-        $Config | Add-Member -NotePropertyName 'LuaPath' -NotePropertyValue ''
-        $ConfigChanged = $true
-    }
-    $Config.LuaPath = if ($Lua) { $Lua.Path } else {
-        (
-            Resolve-Path -Path (
-                Read-Host @EASC -Prompt (
-                    @(
-                        "Unable to locate 'lua' command in path.",
-                        "Please enter the location of the 'lua' executable"
-                    ) -join "`n"
-                )
-            )
-        ).Path
-    }
-    $ConfigChanged = $true
-} else {
-    $Lua = $Config.LuaPath
-}
-
-if (!$Lua) {
-    throw "'Lua' command was not found; exiting."
-    exit
-}
-
-# Make sure we know where WoW is installed
-if ( -not $Config.WoWPath -or -not (Test-Path $Config.WoWPath) ) {
-    # Check default install location(s) before asking the user
-    if ($Config.PSObject.Properties.Name -notcontains 'WoWPath') {
-        $Config | Add-Member -NotePropertyName 'WoWPath' -NotePropertyValue ''
-        $ConfigChanged = $true
-    }
-    if (
-        (
-            $PSVersionTable.PSEdition -eq 'Desktop' -or
-            (
-                $PSVersionTable.PSEdition -eq 'Core' -and
-                $IsWindows
-            )
-        ) -and
-        (Resolve-Path @EASC -Path 'C:\World of Warcraft')
-    ) {
-        $Config.WoWPath = 'C:\World of Warcraft'
-        $ConfigChanged = $true
-    } else {
-        # Ask the user where WoW is installed
-        $Config.WoWPath = (
-            Resolve-Path -Path (
-                Read-Host @EASC -Prompt (
-                    @(
-                        "Unable to locate WoW installation.",
-                        "Please enter the location of your WoW install"
-                    ) -join "`n"
-                )
-            )
-        ).Path
-        $ConfigChanged = $true
-    }
-}
-
-$MyKeyData = @{}
-$OutputProperties = @{
-    Property = [System.Collections.ArrayList]@("Name","Faction","Class","Dungeon","Level","WeeklyBest")
-}
-
 #------------------------------------------------[Declarations]----------------------------------------------------
+
+"Declarations" | Write-Debug
 
 Class WoWAstralKeys {
     [String] $Name
@@ -213,10 +118,15 @@ Class WoWAstralKeys {
         '65535' = "No key"
         '2'     = "Temple of the Jade Serpent"
         '165'   = "Shadowmoon Burial Grounds"
+        '168'   = "The Everbloom"
+        '198'   = "Darkheart Thicket"
+        '199'   = "Black Rock Hold"
         '200'   = "Halls of Valor"
         '206'   = "Neltharion's Lair"
         '210'   = "Court of Stars"
+        '244'   = "Atal'Dazar"
         '245'   = "Freehold"
+        '248'   = "Waycrest Manor"
         '251'   = "The Underrot"
         '375'   = "Mists of Tirna Scithe"
         '376'   = "The Necrotic Wake"
@@ -237,6 +147,9 @@ Class WoWAstralKeys {
         '405'   = "Brackenhide Hollow"
         '406'   = "Halls of Infusion"
         '438'   = "Vortex Pinnacle"
+        '456'   = "Throne of the Tides"
+        '463'   = "DOTI: Galakrond's Fall"
+        '464'   = "DOTI: Murozond's Rise"
     }
 
     hidden _Add_ScriptProperties() {
@@ -324,7 +237,112 @@ Class WoWAstralKeys {
     }
 }
 
+$OutputProperties = @{
+    Property = [System.Collections.ArrayList]@("Name","Faction","Class","Dungeon","Level","WeeklyBest")
+}
+
+#-----------------------------------------------[Initializations]--------------------------------------------------
+
+"Initializations" | Write-Debug
+
+# Load stored configuration file
+$ConfigFilePath = "~" | Join-Path -ChildPath ".wakconfig" | Resolve-Path
+if ( -not (Test-Path -Path $ConfigFilePath) ) {
+    "Configuration file was not found." | Write-Verbose
+    $Config = [PSCustomObject]@{
+        LuaPath = ""
+        WoWPath = ""
+    }
+    $ConfigHash = $null
+} else {
+    "Found configuration file!" | Write-Verbose
+    $Config = Get-Content -Path $ConfigFilePath | ConvertFrom-Json
+    $ConfigHash = (Get-FileHash -Algorithm SHA256 -Path $ConfigFilePath).Hash
+}
+<#
+    Stored config should have:
+    - LuaPath - The location of the Lua command
+    - WoWPath - The location of the WoW install (default: 'C:\World of Warcraft')
+#>
+$ConfigChanged = $false
+
+# Make sure we know where the 'lua' command is
+if ( -not $Config.LuaPath -or -not (Test-Path $Config.LuaPath) ) {
+    # Check path before asking the user
+    $Lua = Get-Command "lua.exe"
+    #"`$Lua is $Lua" | Out-Host
+    if ($Config.PSObject.Properties.Name -notcontains 'LuaPath') {
+        $Config | Add-Member -NotePropertyName 'LuaPath' -NotePropertyValue ''
+        $ConfigChanged = $true
+    }
+    $Config.LuaPath = if ($Lua) { $Lua.Path } else {
+        (
+            Resolve-Path -Path (
+                Read-Host @EASC -Prompt (
+                    @(
+                        "Unable to locate 'lua' command in path.",
+                        "Please enter the location of the 'lua' executable"
+                    ) -join "`n"
+                )
+            )
+        ).Path
+    }
+    $ConfigChanged = $true
+} else {
+    $Lua = $Config.LuaPath
+}
+
+@"
+`$Config = {0}
+`$ConfigChanged = {1}
+`$Lua = {2}
+"@ -f $Config,$ConfigChanged,$Lua | Write-Debug
+
+if (!$Lua) {
+    throw "'Lua' command was not found; exiting."
+    exit
+}
+
+# Make sure we know where WoW is installed
+if ( -not $Config.WoWPath -or -not (Test-Path $Config.WoWPath) ) {
+    # Check default install location(s) before asking the user
+    if ($Config.PSObject.Properties.Name -notcontains 'WoWPath') {
+        $Config | Add-Member -NotePropertyName 'WoWPath' -NotePropertyValue ''
+        $ConfigChanged = $true
+    }
+    if (
+        (
+            $PSVersionTable.PSEdition -eq 'Desktop' -or
+            (
+                $PSVersionTable.PSEdition -eq 'Core' -and
+                $IsWindows
+            )
+        ) -and
+        (Resolve-Path @EASC -Path 'C:\World of Warcraft')
+    ) {
+        $Config.WoWPath = 'C:\World of Warcraft'
+        $ConfigChanged = $true
+    } else {
+        # Ask the user where WoW is installed
+        $Config.WoWPath = (
+            Resolve-Path -Path (
+                Read-Host @EASC -Prompt (
+                    @(
+                        "Unable to locate WoW installation.",
+                        "Please enter the location of your WoW install"
+                    ) -join "`n"
+                )
+            )
+        ).Path
+        $ConfigChanged = $true
+    }
+}
+
+$MyKeyData = @{}
+
 #--------------------------------------------------[Functions]-----------------------------------------------------
+
+"Functions" | Write-Debug
 
 function Invoke-WAKCharacterExtraction {
     Param(
@@ -393,20 +411,24 @@ function Invoke-WAKKeystoneExtraction {
 
 #--------------------------------------------------[Execution]-----------------------------------------------------
 
-$AKTargetPath = @(
-    $Config.WoWPath,
-    '_retail_',
-    'WTF',
-    'Account',
-    '*',
-    'SavedVariables',
-    'AstralKeys.lua'
-) -join [IO.Path]::DirectorySeparatorChar
+"Execution" | Write-Debug
+
+$AKTargetPath = $Config.WoWPath |
+    Join-Path -ChildPath "_retail_" |
+    Join-Path -ChildPath "WTF" |
+    Join-Path -ChildPath "Account" |
+    Join-Path -ChildPath "*" |
+    Join-Path -ChildPath "SavedVariables" |
+    Join-Path -ChildPath "AstralKeys.lua"
 $AKTargetFiles = Get-ChildItem -Path $AKTargetPath -Recurse
+$AKTargetPath | Write-Debug
+$AKTargetFiles | Write-Debug
 
 # Do the work
 foreach ($File in $AKTargetFiles) {
-    $ImportJson = ( & $Lua ".\AK_Lua_to_Json.lua" "$File" )
+    $ImportJson = & $Lua "$PWD\AK_Lua_to_Json.lua" "$File"
+    $PWD | Write-Debug
+    $ImportJson | Write-Debug
     $ImportObject = $ImportJson | ConvertFrom-Json
     $ImportObject | Invoke-WAKCharacterExtraction -Hashtable $MyKeyData
     $ImportObject | Invoke-WAKKeystoneExtraction -Hashtable $MyKeyData
@@ -448,4 +470,5 @@ if ($ConfigChanged) {
 }
 
 #-----------------------------------------------------[End]--------------------------------------------------------
+"End" | Write-Debug
 
