@@ -14,12 +14,12 @@
 .OUTPUTS
     None
 .NOTES
-    Version:            v2.2.1
+    Version:            v2.2.2
     Author(s):          RavenDT (https://github.com/RavenDT)
     Maintainer(s):      RavenDT (https://github.com/RavenDT)
     Website:            https://github.com/RavenDT/WoWAstralKeys
-    Modified Date:      2025-02-15
-    Purpose/Change:     - Update for TWW Season 1 dungeons
+    Modified Date:      2025-06-13
+    Purpose/Change:     - Update for TWW Season 2 dungeons
     License:            MIT License
 .EXAMPLE
     PS> .\WoWAstralKeys.ps1 | Format-Table
@@ -114,6 +114,7 @@ Class WoWAstralKeys {
         WARRIOR     = "Warrior"
     }
 
+    # https://wago.tools/db2/mapchallengemode
     static hidden $_DUNGEON_LOOKUP = @{
         '65535' = "No key"
         '2'     = "Temple of the Jade Serpent"
@@ -126,9 +127,11 @@ Class WoWAstralKeys {
         '210'   = "Court of Stars"
         '244'   = "Atal'Dazar"
         '245'   = "Freehold"
+        '247'   = "The MOTHERLODE!!"
         '248'   = "Waycrest Manor"
         '251'   = "The Underrot"
         '353'   = "Siege of Boralus"
+        '370'   = "Operation: Mechagon - Workshop"
         '375'   = "Mists of Tirna Scithe"
         '376'   = "The Necrotic Wake"
         '377'   = "De Other Side"
@@ -151,11 +154,16 @@ Class WoWAstralKeys {
         '456'   = "Throne of the Tides"
         '463'   = "DOTI: Galakrond's Fall"
         '464'   = "DOTI: Murozond's Rise"
+        '499'   = "Priory of the Sacred Flame"
+        '500'   = "The Rookery"
         '501'   = "The Stonevault"
         '502'   = "City of Threads"
         '503'   = "Ara-Kara, City of Echoes"
+        '504'   = "Darkflame Cleft"
         '505'   = "The Dawnbreaker"
+        '506'   = "Cinderbrew Meadery"
         '507'   = "Grim Batol"
+        '525'   = "Operation: Floodgate"
     }
 
     hidden _Add_ScriptProperties() {
